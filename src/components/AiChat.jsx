@@ -4,14 +4,11 @@ import { speakEnglish } from '../utils/speechEngine';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-export default function AiChat({ theme, nativeLang, onBack }) {
+export default function AiChat({ theme, nativeLang, englishLevel, onBack }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(
-    () => import.meta.env.VITE_GROQ_API_KEY || localStorage.getItem('GROQ_API_KEY') || ''
-  );
-  const [tempKey, setTempKey] = useState('');
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   const [errorMsg, setErrorMsg] = useState('');
   const chatBottomRef = useRef(null);
 
@@ -34,24 +31,7 @@ export default function AiChat({ theme, nativeLang, onBack }) {
     }]);
   }, [nativeLang]);
 
-  const handleSaveKey = (e) => {
-    e.preventDefault();
-    if (!tempKey.trim()) {
-      setErrorMsg(nativeLang.id === 'ml' ? 'ദയവായി ഒരു Groq API Key നൽകുക.' : 'Please enter a valid Groq API Key.');
-      return;
-    }
-    const cleanKey = tempKey.trim();
-    localStorage.setItem('GROQ_API_KEY', cleanKey);
-    setApiKey(cleanKey);
-    setErrorMsg('');
-  };
 
-  const handleClearKey = () => {
-    localStorage.removeItem('GROQ_API_KEY');
-    setApiKey('');
-    setTempKey('');
-    setErrorMsg('');
-  };
 
   // Extract English words/phrases for TTS pronunciation
   const extractEnglishToSpeak = (text) => {
@@ -97,6 +77,14 @@ export default function AiChat({ theme, nativeLang, onBack }) {
     // System prompt tuned for elder translation + pronunciation
     const systemPrompt = `You are "English Companion Tutor", a warm, patient, and encouraging English language teacher for older adults.
 The student's native language is ${nativeLang.name} (code: ${nativeLang.id}).
+The student's English proficiency level is: ${englishLevel || 'none'}.
+
+Focus the content on themes highly relevant to older adults, such as healthcare (doctors, medicine), family interactions (grandchildren, relatives), polite requests, daily household activities, and navigating public spaces safely.
+
+Based on their proficiency level:
+- If 'none' or 'basic': Keep explanations EXTREMELY simple. Use only basic words and very short sentences. Provide literal translations.
+- If 'intermediate': Introduce slightly more grammar, common phrases, and encourage them to form sentences.
+- If 'advanced': Use richer vocabulary, provide nuanced conversational context, and correct minor grammatical errors.
 
 When the student asks about any English word, phrase, or a word in ${nativeLang.name}:
 
@@ -109,7 +97,7 @@ ALWAYS respond in this exact structure (use bold headings):
 [Write the English word's pronunciation phonetically using ${nativeLang.name} script characters. E.g. for Malayalam: "ഹോസ്പിറ്റൽ" for "Hospital", "ഗുഡ് മോണിങ്" for "Good morning"]
 
 **Usage Example:**
-English: "[A simple everyday sentence in English using the word, in double quotes]"
+English: "[A simple everyday sentence in English using the word, in double quotes. Tailor complexity to their proficiency level]"
 ${nativeLang.name}: [Translation of that sentence in ${nativeLang.name}]
 
 Rules:
@@ -196,63 +184,20 @@ Rules:
   // ── Setup screen when no API key ──────────────────────────────────────────
   if (!apiKey) {
     return (
-      <div className="flex-1 flex flex-col justify-center items-center py-6 px-2">
-        <div className="text-center mb-6">
-          <div className="p-4 bg-purple-50 border-2 border-purple-200 rounded-full w-max mx-auto mb-4">
-            <Key className="w-10 h-10 text-purple-600 animate-bounce" />
-          </div>
-          <h2 className={`${theme.fontSizeTitle} ${theme.textPrimary}`}>
-            Activate AI Tutor (Groq)
-          </h2>
-          <p className={`${theme.fontSizeSubtitle} ${theme.textSecondary} mt-2 max-w-md mx-auto`}>
-            {nativeLang.id === 'ml'
-              ? 'ഫ്രീ Groq API Key ഉപയോഗിച്ച് AI Tutor ആക്ടിവേറ്റ് ചെയ്യൂ.'
-              : 'Enter a free Groq API Key to activate your live AI English tutor.'}
-          </p>
-        </div>
-
-        <form onSubmit={handleSaveKey} className="w-full max-w-md bg-white border-2 border-slate-200 p-6 rounded-3xl shadow-sm flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-extrabold text-slate-500 mb-2 uppercase tracking-wider">
-              {nativeLang.id === 'ml' ? 'Groq API Key നൽകുക:' : 'Enter Groq API Key:'}
-            </label>
-            <input
-              type="password"
-              value={tempKey}
-              onChange={(e) => setTempKey(e.target.value)}
-              placeholder="gsk_..."
-              className={`w-full ${theme.input} rounded-xl px-4 py-3 text-lg font-mono outline-none`}
-            />
-          </div>
-
-          {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-center gap-2 font-bold text-sm">
-              <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className={`w-full ${theme.btnPrimary} p-4 rounded-xl text-lg font-black transition-all cursor-pointer`}
-          >
-            {nativeLang.id === 'ml' ? 'സേവ് ചെയ്ത് തുടങ്ങുക' : 'Save & Start Chatting'}
-          </button>
-
-          <a
-            href="https://console.groq.com/keys"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-purple-600 hover:text-purple-800 text-center font-bold text-sm flex items-center justify-center gap-1.5 mt-2"
-          >
-            <HelpCircle className="w-4 h-4" />
-            <span>
-              {nativeLang.id === 'ml'
-                ? 'സൗജന്യ Groq Key ഉണ്ടാക്കൂ (30 സെക്കൻഡ്)'
-                : 'Get a free Groq Key in 30 seconds →'}
-            </span>
-          </a>
-        </form>
+      <div className="flex-1 flex flex-col justify-center items-center py-6 px-2 text-center gap-4">
+        <AlertCircle className="w-16 h-16 text-rose-500" />
+        <h2 className={`${theme.fontSizeTitle} text-rose-600`}>
+          API Key Missing
+        </h2>
+        <p className={`${theme.fontSizeSubtitle} ${theme.textSecondary} max-w-md`}>
+          Please add your VITE_GROQ_API_KEY to the <b>.env.local</b> file to use the AI features.
+        </p>
+        <button
+          onClick={onBack}
+          className={`${theme.btnSecondaryLight} mt-4 px-6 py-3 rounded-xl flex items-center gap-2 cursor-pointer font-bold`}
+        >
+          <ArrowLeft className="w-5 h-5" /> Go Back
+        </button>
       </div>
     );
   }

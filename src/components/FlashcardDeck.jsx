@@ -7,8 +7,6 @@ import { LESSON_DATA } from '../data/contentData';
 import { speakEnglish, getSpeechRecognitionSystem } from '../utils/speechEngine';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const BATCH_SIZE = 5;   // Show quiz after every 5 cards
-const QUIZ_COUNT = 10;  // 10 questions per quiz (2 per card)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const shuffle = (arr) => {
@@ -52,8 +50,8 @@ const getSimilarity = (expected, actual) => {
   return (matched / expWords.length) * 100;
 };
 
-// Generate 10 MCQ questions from a batch of 5 cards
-const generateQuiz = (batchCards, allCards, langId) => {
+// Generate MCQ questions from the batch
+const generateQuiz = (batchCards, allCards, langId, quizSize) => {
   const questions = [];
   batchCards.forEach((card) => {
     const wrongPool = shuffle(allCards.filter((c) => c.id !== card.id));
@@ -80,7 +78,7 @@ const generateQuiz = (batchCards, allCards, langId) => {
       speakOnShow: false,
     });
   });
-  return shuffle(questions).slice(0, QUIZ_COUNT);
+  return shuffle(questions).slice(0, quizSize);
 };
 
 // Language-specific UI strings
@@ -200,15 +198,115 @@ const L = {
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack }) {
-  const allCards = useMemo(() => LESSON_DATA[categoryId] || [], [categoryId]);
+export default function FlashcardDeck({ theme, nativeLang, englishLevel, categoryId, onBack, onQuizComplete }) {
+  const staticCards = useMemo(() => LESSON_DATA[categoryId] || [], [categoryId]);
   const langId = nativeLang?.id || 'ml';
   const t = L[langId] || L.ml;
 
   // ── Infinite deck state ───────────────────────────────────────────────────
-  const [deck, setDeck] = useState(() => shuffle([...allCards]));
+  const [quizSize, setQuizSize] = useState(() => {
+    const saved = localStorage.getItem('APP_QUIZ_SIZE');
+    return saved ? parseInt(saved, 10) : null;
+  });
+  const [allCards, setAllCards] = useState([]);
+  const [deck, setDeck] = useState([]);
+  const [isLoadingCards, setIsLoadingCards] = useState(true);
+  const [aiError, setAiError] = useState(false);
   const [deckPointer, setDeckPointer] = useState(0);
-  const [batchCards, setBatchCards] = useState([]); // accumulates up to BATCH_SIZE
+
+  useEffect(() => {
+    if (!quizSize) return;
+
+    let isMounted = true;
+    const fetchCards = async () => {
+      const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+      if (!apiKey) {
+        if (isMounted) {
+          const shuffled = shuffle([...staticCards]);
+          setAllCards(staticCards);
+          setDeck(shuffled);
+          setIsLoadingCards(false);
+        }
+        return;
+      }
+
+      if (isMounted) {
+        setIsLoadingCards(true);
+        setAiError(false);
+      }
+
+      try {
+        const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+        const model = import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile';
+        const systemPrompt = `You are an AI generating flashcards for an English learning app for seniors.
+The target native language is ${nativeLang.name} (${nativeLang.id}).
+The user's English proficiency level is: ${englishLevel || 'none'}.
+The category is: ${categoryId}.
+
+Generate EXACTLY ${quizSize} unique flashcards tailored to their proficiency level.
+Focus the vocabulary and phrases on themes highly relevant to older adults (e.g., healthcare, doctors, family interactions, polite requests, daily household activities, and navigating public spaces safely).
+
+- If 'none' or 'basic': Provide simple, single vocabulary words or very short phrases (e.g. "Water", "Hello", "Doctor", "Pain").
+- If 'intermediate': Provide practical sentences (e.g. "Where is the hospital?", "How are the grandchildren?").
+- If 'advanced': Provide more complex conversational phrases (e.g. "I need to schedule an appointment with my cardiologist.").
+
+You MUST respond ONLY with a valid JSON object matching this schema:
+{
+  "cards": [
+    {
+      "id": "gen_1",
+      "english": "English phrase",
+      "translations": { "${nativeLang.id}": "Translation in native language" },
+      "context": "Short contextual tip on when to use this"
+    }
+  ]
+}
+Ensure the JSON is perfectly formatted. Do not include markdown code blocks.`;
+
+        const response = await fetch(GROQ_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'system', content: systemPrompt }],
+            temperature: 0.7,
+            response_format: { type: "json_object" }
+          })
+        });
+
+        if (!response.ok) throw new Error("API Failed");
+        const data = await response.json();
+        const content = JSON.parse(data.choices[0].message.content);
+        
+        if (isMounted) {
+          if (content && content.cards && content.cards.length > 0) {
+            setAllCards(content.cards);
+            setDeck(shuffle([...content.cards]));
+          } else {
+            throw new Error("Invalid format");
+          }
+        }
+      } catch (err) {
+        console.error("AI Generation failed, falling back to static data", err);
+        if (isMounted) {
+          setAiError(true);
+          setAllCards(staticCards);
+          setDeck(shuffle([...staticCards]));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingCards(false);
+        }
+      }
+    };
+
+    fetchCards();
+    return () => { isMounted = false; };
+  }, [categoryId, englishLevel, nativeLang, staticCards, quizSize]);
+  const [batchCards, setBatchCards] = useState([]); // accumulates up to quizSize
   const [totalShown, setTotalShown] = useState(0);
 
   // ── Mode: 'card' | 'quiz' | 'quizResult' ─────────────────────────────────
@@ -270,9 +368,9 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
     setDeckPointer(nextPtr);
     setTotalShown((prev) => prev + 1);
 
-    if (newBatch.length >= BATCH_SIZE) {
+    if (newBatch.length >= quizSize) {
       // Launch quiz
-      const qs = generateQuiz(newBatch, allCards, langId);
+      const qs = generateQuiz(newBatch, allCards, langId, quizSize);
       setQuizQuestions(qs);
       setBatchCards([]);
       setCurrentQ(0);
@@ -383,6 +481,9 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
   const handleNextQuestion = () => {
     if (currentQ + 1 >= quizQuestions.length) {
       setMode('quizResult');
+      if (onQuizComplete) {
+        onQuizComplete(quizScore);
+      }
     } else {
       setCurrentQ((q) => q + 1);
       setSelectedAnswer(null);
@@ -410,7 +511,52 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
     error: <AlertCircle className="w-8 h-8 text-blue-600 shrink-0" />,
   };
 
-  const cardsUntilQuiz = BATCH_SIZE - batchCards.length;
+  if (!quizSize) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-10 px-4 text-center gap-6">
+        <h2 className={`${theme.fontSizeTitle} ${theme.textPrimary}`}>
+          {langId === 'ml' ? 'ഇന്ന് എത്ര ചോദ്യങ്ങൾ പഠിക്കണം?' : 'How many questions do you want to practice?'}
+        </h2>
+        <div className="grid grid-cols-2 gap-4 w-full max-w-sm mt-4">
+          {[5, 10, 15, 20].map((num) => (
+            <button
+              key={num}
+              onClick={() => {
+                localStorage.setItem('APP_QUIZ_SIZE', num.toString());
+                setQuizSize(num);
+              }}
+              className={`${theme.btnPrimary} py-6 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer text-2xl font-black active:scale-95 transition`}
+            >
+              {num}
+              <span className="text-sm font-semibold opacity-80">Questions</span>
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={onBack}
+          className={`${theme.btnSecondaryLight} mt-6 px-6 py-3 rounded-xl flex items-center gap-2 cursor-pointer font-bold`}
+        >
+          <ArrowLeft className="w-5 h-5" /> Go Back
+        </button>
+      </div>
+    );
+  }
+
+  const cardsUntilQuiz = quizSize - batchCards.length;
+
+  if (isLoadingCards) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-10 px-4 text-center gap-6">
+         <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto shadow-sm"></div>
+         <h2 className={`${theme.fontSizeTitle} ${theme.textPrimary}`}>
+            {langId === 'ml' ? 'നിങ്ങൾക്കായി പാഠങ്ങൾ തയ്യാറാക്കുന്നു...' : 'Preparing personalized lessons for you...'}
+         </h2>
+         <p className={`${theme.fontSizeSubtitle} ${theme.textSecondary}`}>
+            {langId === 'ml' ? 'AI ഉപയോഗിച്ച് ഫ്ലാഷ് കാർഡുകൾ നിർമ്മിക്കുന്നു ⚡' : 'Generating flashcards using AI ⚡'}
+         </p>
+      </div>
+    );
+  }
 
   // ════════════════════════════════════════════════════════════════════════════
   // QUIZ MODE
@@ -425,7 +571,7 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
         <div className="flex items-center justify-between">
           <span className={`${theme.fontSizeTitle} ${theme.textPrimary}`}>{t.quizTitle}</span>
           <span className={`${theme.fontSizeSubtitle} font-black ${theme.accentText}`}>
-            {currentQ + 1} / {QUIZ_COUNT}
+            {currentQ + 1} / {quizSize}
           </span>
         </div>
 
@@ -433,7 +579,7 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
         <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
           <div
             className="h-3 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500"
-            style={{ width: `${((currentQ + 1) / QUIZ_COUNT) * 100}%` }}
+            style={{ width: `${((currentQ + 1) / quizSize) * 100}%` }}
           />
         </div>
 
@@ -490,7 +636,7 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
               onClick={handleNextQuestion}
               className={`${theme.btnPrimary} px-6 py-3 rounded-2xl flex items-center gap-2 shrink-0 cursor-pointer`}
             >
-              {currentQ + 1 >= QUIZ_COUNT ? t.seeResult : t.nextQ}
+              {currentQ + 1 >= quizSize ? t.seeResult : t.nextQ}
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -503,7 +649,7 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
   // QUIZ RESULT MODE
   // ════════════════════════════════════════════════════════════════════════════
   if (mode === 'quizResult') {
-    const pct = (quizScore / QUIZ_COUNT) * 100;
+    const pct = (quizScore / quizSize) * 100;
     const resultMsg = pct >= 80 ? t.excellent : pct >= 60 ? t.good : t.keepGoing;
     const stars = pct >= 80 ? 3 : pct >= 60 ? 2 : 1;
 
@@ -522,7 +668,7 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
             ))}
           </div>
           <p className={`${theme.fontSizeCardEnglish} ${theme.accentText} font-black`}>
-            {t.score(quizScore, QUIZ_COUNT)}
+            {t.score(quizScore, quizSize)}
           </p>
           <p className={`${theme.fontSizeSubtitle} ${theme.textSecondary} mt-2 max-w-sm mx-auto`}>
             {resultMsg}
@@ -578,6 +724,15 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
         </button>
 
         <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={() => {
+              localStorage.removeItem('APP_QUIZ_SIZE');
+              setQuizSize(null);
+            }}
+            className="text-xs font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded cursor-pointer transition"
+          >
+            ⚙️ Change ({quizSize})
+          </button>
           <span className={`${theme.fontSizeBody} ${theme.textSecondary} font-black`}>
             #{totalShown + 1}
           </span>
@@ -593,8 +748,8 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
       </div>
 
       {/* Batch progress dots */}
-      <div className="flex justify-center gap-3 mb-4">
-        {Array.from({ length: BATCH_SIZE }).map((_, i) => (
+      <div className="flex justify-center flex-wrap gap-2 mb-4">
+        {Array.from({ length: quizSize }).map((_, i) => (
           <div
             key={i}
             className={`h-3 rounded-full transition-all duration-300 ${
@@ -686,7 +841,7 @@ export default function FlashcardDeck({ theme, nativeLang, categoryId, onBack })
           onClick={goToNextCard}
           className={`${theme.btnPrimary} px-8 py-4 rounded-2xl font-black ${theme.fontSizeSubtitle} flex items-center gap-2 cursor-pointer shadow-md`}
         >
-          {batchCards.length + 1 === BATCH_SIZE ? '📝 Quiz Time!' : t.nextCard}
+          {batchCards.length + 1 === quizSize ? '📝 Quiz Time!' : t.nextCard}
           <ChevronRight className="w-5 h-5 text-white" />
         </button>
       </div>
