@@ -1,6 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Fix __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: '.env.local' });
 dotenv.config(); // fallback to .env if needed
@@ -113,6 +119,14 @@ Example: "Hello, how are you today? (നമസ്കാരം, ഇന്ന് �
     console.error('Error in chat:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+// Serve static frontend files in production
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Catch-all route to serve the React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 app.listen(PORT, () => {
