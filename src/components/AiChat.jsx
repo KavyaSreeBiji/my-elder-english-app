@@ -74,38 +74,7 @@ export default function AiChat({ theme, nativeLang, englishLevel, onBack }) {
     setLoading(true);
     setErrorMsg('');
 
-    // System prompt tuned for elder translation + pronunciation
-    const systemPrompt = `You are "English Companion Tutor", a warm, patient, and encouraging English language teacher for older adults.
-The student's native language is ${nativeLang.name} (code: ${nativeLang.id}).
-The student's English proficiency level is: ${englishLevel || 'none'}.
-
-Focus the content on themes highly relevant to older adults, such as healthcare (doctors, medicine), family interactions (grandchildren, relatives), polite requests, daily household activities, and navigating public spaces safely.
-
-Based on their proficiency level:
-- If 'none' or 'basic': Keep explanations EXTREMELY simple. Use only basic words and very short sentences. Provide literal translations.
-- If 'intermediate': Introduce slightly more grammar, common phrases, and encourage them to form sentences.
-- If 'advanced': Use richer vocabulary, provide nuanced conversational context, and correct minor grammatical errors.
-
-When the student asks about any English word, phrase, or a word in ${nativeLang.name}:
-
-ALWAYS respond in this exact structure (use bold headings):
-
-**Translation / Meaning:**
-[Simple, clear translation in ${nativeLang.name}]
-
-**English Pronunciation (ഉച്ചാരണം):**
-[Write the English word's pronunciation phonetically using ${nativeLang.name} script characters. E.g. for Malayalam: "ഹോസ്പിറ്റൽ" for "Hospital", "ഗുഡ് മോണിങ്" for "Good morning"]
-
-**Usage Example:**
-English: "[A simple everyday sentence in English using the word, in double quotes. Tailor complexity to their proficiency level]"
-${nativeLang.name}: [Translation of that sentence in ${nativeLang.name}]
-
-Rules:
-- Be warm, encouraging, and brief. Maximum 5 lines total.
-- If the student types a ${nativeLang.name} word, find its English equivalent and explain it the same way.
-- Only help with English learning, vocabulary, translation, and pronunciation. Politely redirect off-topic queries.`;
-
-    // Build conversation history (skip initial AI welcome, Groq starts with system + user)
+    // Build conversation history (skip initial AI welcome)
     const conversationHistory = messages
       .filter((_, idx) => idx !== 0)
       .map(msg => ({
@@ -116,36 +85,24 @@ Rules:
     conversationHistory.push({ role: 'user', content: userText });
 
     try {
-      const model = import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile';
-      const response = await fetch(GROQ_API_URL, {
+      const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...conversationHistory
-          ],
-          temperature: 0.6,
-          max_tokens: 300,
-          stream: false
+          messages: conversationHistory,
+          nativeLang,
+          englishLevel
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData?.error?.message ||
-          `HTTP ${response.status}: ${errorData?.error?.type || 'Unknown error'}`
-        );
+        throw new Error(errorData?.error || 'API Failed');
       }
 
       const data = await response.json();
       const aiReply =
-        data?.choices?.[0]?.message?.content ||
+        data?.message ||
         (nativeLang.id === 'ml'
           ? 'ക്ഷമിക്കണം, മറുപടി ലഭിച്ചില്ല. വീണ്ടും ശ്രമിക്കുക.'
           : 'Sorry, I could not generate a response. Please try again.');

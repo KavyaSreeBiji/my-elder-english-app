@@ -219,67 +219,20 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
 
     let isMounted = true;
     const fetchCards = async () => {
-      const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-      if (!apiKey) {
-        if (isMounted) {
-          const shuffled = shuffle([...staticCards]);
-          setAllCards(staticCards);
-          setDeck(shuffled);
-          setIsLoadingCards(false);
-        }
-        return;
-      }
-
       if (isMounted) {
         setIsLoadingCards(true);
         setAiError(false);
       }
 
       try {
-        const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-        const model = import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile';
-        const systemPrompt = `You are an AI generating flashcards for an English learning app for seniors.
-The target native language is ${nativeLang.name} (${nativeLang.id}).
-The user's English proficiency level is: ${englishLevel || 'none'}.
-The category is: ${categoryId}.
-
-Generate EXACTLY ${quizSize} unique flashcards tailored to their proficiency level.
-Focus the vocabulary and phrases on themes highly relevant to older adults (e.g., healthcare, doctors, family interactions, polite requests, daily household activities, and navigating public spaces safely).
-
-- If 'none' or 'basic': Provide simple, single vocabulary words or very short phrases (e.g. "Water", "Hello", "Doctor", "Pain").
-- If 'intermediate': Provide practical sentences (e.g. "Where is the hospital?", "How are the grandchildren?").
-- If 'advanced': Provide more complex conversational phrases (e.g. "I need to schedule an appointment with my cardiologist.").
-
-You MUST respond ONLY with a valid JSON object matching this schema:
-{
-  "cards": [
-    {
-      "id": "gen_1",
-      "english": "English phrase",
-      "translations": { "${nativeLang.id}": "Translation in native language" },
-      "context": "Short contextual tip on when to use this"
-    }
-  ]
-}
-Ensure the JSON is perfectly formatted. Do not include markdown code blocks.`;
-
-        const response = await fetch(GROQ_API_URL, {
+        const response = await fetch('/api/flashcards', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'system', content: systemPrompt }],
-            temperature: 0.7,
-            response_format: { type: "json_object" }
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nativeLang, englishLevel, categoryId, quizSize })
         });
 
         if (!response.ok) throw new Error("API Failed");
-        const data = await response.json();
-        const content = JSON.parse(data.choices[0].message.content);
+        const content = await response.json();
         
         if (isMounted) {
           if (content && content.cards && content.cards.length > 0) {

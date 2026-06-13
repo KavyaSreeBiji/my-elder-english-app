@@ -1,0 +1,120 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.local' });
+dotenv.config(); // fallback to .env if needed
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+app.use(cors());
+app.use(express.json());
+
+// Helper to fetch from Groq
+const fetchGroq = async (messages, response_format = null) => {
+  const apiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('Groq API Key is missing');
+  }
+
+  const model = process.env.GROQ_MODEL || process.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+  const body = {
+    model,
+    messages,
+    temperature: 0.7,
+  };
+  
+  if (response_format) {
+    body.response_format = response_format;
+  }
+
+  const response = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API Error: ${errorText}`);
+  }
+
+  return response.json();
+};
+
+app.post('/api/flashcards', async (req, res) => {
+  try {
+    const { nativeLang, englishLevel, categoryId, quizSize } = req.body;
+
+    const systemPrompt = `You are an AI generating flashcards for an English learning app for seniors.
+The target native language is ${nativeLang.name} (${nativeLang.id}).
+The user's English proficiency level is: ${englishLevel || 'none'}.
+The category is: ${categoryId}.
+
+Generate EXACTLY ${quizSize} unique flashcards tailored to their proficiency level.
+Focus the vocabulary and phrases on themes highly relevant to older adults (e.g., healthcare, doctors, family interactions, polite requests, daily household activities, and navigating public spaces safely).
+
+- If 'none' or 'basic': Provide simple, single vocabulary words or very short phrases (e.g. "Water", "Hello", "Doctor", "Pain").
+- If 'intermediate': Provide practical sentences (e.g. "Where is the hospital?", "How are the grandchildren?").
+- If 'advanced': Provide more complex conversational phrases (e.g. "I need to schedule an appointment with my cardiologist.").
+
+You MUST respond ONLY with a valid JSON object matching this schema:
+{
+  "cards": [
+    {
+      "id": "gen_1",
+      "english": "English phrase",
+      "translations": { "${nativeLang.id}": "Translation in native language" },
+      "context": "Short contextual tip on when to use this"
+    }
+  ]
+}
+Ensure the JSON is perfectly formatted. Do not include markdown code blocks.`;
+
+    const messages = [{ role: 'system', content: systemPrompt }];
+    const data = await fetchGroq(messages, { type: "json_object" });
+    const content = JSON.parse(data.choices[0].message.content);
+
+    res.json(content);
+  } catch (error) {
+    console.error('Error generating flashcards:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { messages, nativeLang, englishLevel } = req.body;
+
+    const systemPrompt = `You are a patient, encouraging English tutor for an older adult whose native language is ${nativeLang.name}.
+Their English level is: ${englishLevel || 'none'}.
+Keep your responses short, supportive, and extremely simple. 
+Focus your conversation on themes relevant to seniors: healthcare, family, asking for help, navigating places, and daily activities.
+Always provide the English sentence first, and then provide a translation in ${nativeLang.name} in parentheses to help them understand. 
+Example: "Hello, how are you today? (നമസ്കാരം, ഇന്ന് നിങ്ങൾക്ക് എങ്ങനെയുണ്ട്?)"`;
+
+    // Ensure system prompt is first
+    const fullMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ];
+
+    const data = await fetchGroq(fullMessages);
+    const aiMessage = data.choices[0].message.content;
+
+    res.json({ message: aiMessage });
+  } catch (error) {
+    console.error('Error in chat:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Backend server running on http://localhost:${PORT}`);
+});

@@ -66,6 +66,7 @@ const TEXT_SIZES = {
 export default function App() {
   const [userId, setUserId] = useState(null);
   const [userName, setUserName] = useState(null);
+  const [userPin, setUserPin] = useState(null);
   const [englishLevel, setEnglishLevel] = useState(null);
   const [textSize, setTextSize] = useState('medium');
   const [nativeLang, setNativeLang] = useState(null);
@@ -75,6 +76,7 @@ export default function App() {
   const [totalQuizzes, setTotalQuizzes] = useState(0);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
+  const [loginError, setLoginError] = useState(null);
 
   const theme = { ...UNIFIED_THEME_COLORS, ...(TEXT_SIZES[textSize] || TEXT_SIZES.medium) };
 
@@ -82,6 +84,7 @@ export default function App() {
     if (isDataLoaded && userId) {
       saveUserProgress(userId, {
         name: userName,
+        pin: userPin,
         englishLevel,
         textSize,
         nativeLang,
@@ -91,7 +94,7 @@ export default function App() {
         totalQuizzes
       });
     }
-  }, [userId, userName, englishLevel, textSize, nativeLang, screen, selectedCategory, totalCorrect, totalQuizzes, isDataLoaded]);
+  }, [userId, userName, userPin, englishLevel, textSize, nativeLang, screen, selectedCategory, totalCorrect, totalQuizzes, isDataLoaded]);
 
   useEffect(() => {
     const checkAutoLogin = async () => {
@@ -102,6 +105,7 @@ export default function App() {
         setUserId(savedId);
         setUserName(savedName || 'User');
         if (data) {
+          setUserPin(data.pin || null);
           setEnglishLevel(data.englishLevel || null);
           setTextSize(data.textSize || 'medium');
           setNativeLang(data.nativeLang || null);
@@ -120,15 +124,22 @@ export default function App() {
     checkAutoLogin();
   }, []);
 
-  const handleLogin = async (name, phone) => {
-    const id = phone.trim().toLowerCase();
+  const handleLogin = async (name, pin) => {
+    setLoginError(null);
+    const id = name.trim().toLowerCase();
     const data = await loadUserProgress(id);
+    
+    if (data && data.pin && data.pin !== pin) {
+      setLoginError('INCORRECT_PIN');
+      return;
+    }
     
     localStorage.setItem('APP_USER_ID', id);
     localStorage.setItem('APP_USER_NAME', name);
     
     setUserId(id);
     setUserName(name);
+    setUserPin(pin);
     if (data) {
       setEnglishLevel(data.englishLevel || null);
       setTextSize(data.textSize || 'medium');
@@ -154,6 +165,7 @@ export default function App() {
     localStorage.removeItem('APP_USER_NAME');
     setUserId(null);
     setUserName(null);
+    setUserPin(null);
     setEnglishLevel(null);
     setNativeLang(null);
     setSelectedCategory(null);
@@ -195,7 +207,7 @@ export default function App() {
           )}
 
           {screen === 'login' && (
-            <Login theme={theme} nativeLang={nativeLang} onLogin={handleLogin} />
+            <Login theme={theme} nativeLang={nativeLang} onLogin={handleLogin} loginError={loginError} />
           )}
 
           {screen === 'assessment' && (
