@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import Header from './components/Header';
 import Assessment from './components/Assessment';
 import LanguageSelect from './components/LanguageSelect';
@@ -7,7 +8,7 @@ import FlashcardDeck from './components/FlashcardDeck';
 import AiChat from './components/AiChat';
 import Login from './components/Login';
 import TextSizeModal from './components/TextSizeModal';
-import { saveUserProgress, loadUserProgress } from './firebase';
+import { auth, saveUserProgress, loadUserProgress } from './firebase';
 
 const UNIFIED_THEME_COLORS = {
   bg: "bg-gradient-to-br from-slate-50 via-teal-50/15 to-indigo-50/15 min-h-screen text-slate-900 font-sans p-4 md:p-8 flex flex-col items-center justify-center transition-all duration-300",
@@ -66,7 +67,6 @@ const TEXT_SIZES = {
 export default function App() {
   const [userId, setUserId] = useState(null);
   const [userName, setUserName] = useState(null);
-  const [userPin, setUserPin] = useState(null);
   const [englishLevel, setEnglishLevel] = useState(null);
   const [textSize, setTextSize] = useState('medium');
   const [nativeLang, setNativeLang] = useState(null);
@@ -83,8 +83,7 @@ export default function App() {
   useEffect(() => {
     if (isDataLoaded && userId) {
       saveUserProgress(userId, {
-        name: userName,
-        pin: userPin,
+        email: userName,
         englishLevel,
         textSize,
         nativeLang,
@@ -94,18 +93,19 @@ export default function App() {
         totalQuizzes
       });
     }
-  }, [userId, userName, userPin, englishLevel, textSize, nativeLang, screen, selectedCategory, totalCorrect, totalQuizzes, isDataLoaded]);
+  }, [userId, userName, englishLevel, textSize, nativeLang, screen, selectedCategory, totalCorrect, totalQuizzes, isDataLoaded]);
 
   useEffect(() => {
-    const checkAutoLogin = async () => {
-      const savedId = localStorage.getItem('APP_USER_ID');
-      const savedName = localStorage.getItem('APP_USER_NAME');
-      if (savedId) {
-        const data = await loadUserProgress(savedId);
-        setUserId(savedId);
-        setUserName(savedName || 'User');
+    if (!auth) {
+      setIsDataLoaded(true);
+      return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUserId(user.uid);
+        setUserName(user.email);
+        const data = await loadUserProgress(user.uid);
         if (data) {
-          setUserPin(data.pin || null);
           setEnglishLevel(data.englishLevel || null);
           setTextSize(data.textSize || 'medium');
           setNativeLang(data.nativeLang || null);
@@ -116,42 +116,28 @@ export default function App() {
         } else {
           setScreen('assessment');
         }
-        setIsDataLoaded(true);
       } else {
-        setIsDataLoaded(true);
+        setUserId(null);
+        setUserName(null);
       }
-    };
-    checkAutoLogin();
+      setIsDataLoaded(true);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const handleLogin = async (name, pin) => {
+  const handleAuth = async (email, password, isSignUp) => {
     setLoginError(null);
-    const id = name.trim().toLowerCase();
-    const data = await loadUserProgress(id);
-    
-    if (data && data.pin && data.pin !== pin) {
-      setLoginError('INCORRECT_PIN');
-      return;
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      // state will be handled by onAuthStateChanged listener
+    } catch (error) {
+      console.error("Auth error:", error);
+      setLoginError(error.code || 'unknown-error');
     }
-    
-    localStorage.setItem('APP_USER_ID', id);
-    localStorage.setItem('APP_USER_NAME', name);
-    
-    setUserId(id);
-    setUserName(name);
-    setUserPin(pin);
-    if (data) {
-      setEnglishLevel(data.englishLevel || null);
-      setTextSize(data.textSize || 'medium');
-      setNativeLang(data.nativeLang || nativeLang);
-      setScreen(data.screen || 'assessment');
-      setSelectedCategory(data.selectedCategory || null);
-      setTotalCorrect(data.totalCorrect || 0);
-      setTotalQuizzes(data.totalQuizzes || 0);
-    } else {
-      setScreen('assessment');
-    }
-    setIsDataLoaded(true);
   };
 
   const handleReset = () => {
@@ -160,12 +146,10 @@ export default function App() {
     setSelectedCategory(null);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('APP_USER_ID');
-    localStorage.removeItem('APP_USER_NAME');
+  const handleLogout = async () => {
+    if (auth) await signOut(auth);
     setUserId(null);
     setUserName(null);
-    setUserPin(null);
     setEnglishLevel(null);
     setNativeLang(null);
     setSelectedCategory(null);
@@ -207,7 +191,7 @@ export default function App() {
           )}
 
           {screen === 'login' && (
-            <Login theme={theme} nativeLang={nativeLang} onLogin={handleLogin} loginError={loginError} />
+            <Login theme={theme} nativeLang={nativeLang} onAuth={handleAuth} loginError={loginError} />
           )}
 
           {screen === 'assessment' && (

@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,12 +13,14 @@ const firebaseConfig = {
 
 let app;
 let db;
+let auth;
 
 try {
   // Only initialize if we have a config (prevents crashing if .env is missing)
   if (firebaseConfig.apiKey) {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
   } else {
     console.warn("Firebase config is missing in .env. Remote saving will be disabled.");
   }
@@ -25,15 +28,15 @@ try {
   console.error("Error initializing Firebase", error);
 }
 
-export { app, db };
+export { app, db, auth };
 
 /**
  * Saves user progress to Firestore
  */
-export const saveUserProgress = async (username, data) => {
-  if (!db || !username) return;
+export const saveUserProgress = async (userId, data) => {
+  if (!db || !userId) return;
   try {
-    const userRef = doc(db, 'users', username.toLowerCase());
+    const userRef = doc(db, 'users', userId);
     await setDoc(userRef, data, { merge: true });
   } catch (error) {
     console.error("Error saving progress:", error);
@@ -43,10 +46,10 @@ export const saveUserProgress = async (username, data) => {
 /**
  * Loads user progress from Firestore
  */
-export const loadUserProgress = async (username) => {
-  if (!db || !username) return null;
+export const loadUserProgress = async (userId) => {
+  if (!db || !userId) return null;
   try {
-    const userRef = doc(db, 'users', username.toLowerCase());
+    const userRef = doc(db, 'users', userId);
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
       return docSnap.data();
