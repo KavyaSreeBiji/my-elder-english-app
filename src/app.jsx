@@ -212,7 +212,14 @@ export default function App() {
           {screen === 'language-select' && (
             <LanguageSelect 
               theme={theme} 
-              onSelectLanguage={(lang) => { setNativeLang(lang); setScreen('login'); }} 
+              onSelectLanguage={(lang) => { 
+                setNativeLang(lang); 
+                if (userId) {
+                  setScreen('home');
+                } else {
+                  setScreen('login'); 
+                }
+              }} 
             />
           )}
 
