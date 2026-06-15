@@ -182,7 +182,7 @@ export default function App() {
           onToggleTextSize={() => setIsTextModalOpen(true)} 
         />
 
-        <main className="flex-1 p-6 md:p-8 flex flex-col justify-between bg-emerald-50/5">
+        <main className="flex-1 p-3 sm:p-6 md:p-8 flex flex-col justify-between bg-emerald-50/5">
           {screen === 'language-select' && (
             <LanguageSelect 
               theme={theme} 

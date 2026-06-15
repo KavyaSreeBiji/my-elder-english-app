@@ -129,8 +129,8 @@ export default function Login({ onAuth, theme, nativeLang, loginError }) {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 w-full max-w-4xl mx-auto">
-      <div className={`p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] ${theme.cardBg} max-w-lg w-full shadow-xl transition-all duration-300`}>
+    <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-6 md:p-8 w-full max-w-4xl mx-auto">
+      <div className={`p-6 sm:p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] ${theme.cardBg} max-w-lg w-full shadow-xl transition-all duration-300`}>
         <div className={`mx-auto w-24 h-24 md:w-28 md:h-28 rounded-full ${theme.accentBg} flex items-center justify-center mb-8 md:mb-10 shadow-inner`}>
           {isSignUp ? (
             <UserPlus className={`w-12 h-12 md:w-14 md:h-14 ${theme.accentText}`} />

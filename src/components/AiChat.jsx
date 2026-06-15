@@ -185,11 +185,11 @@ export default function AiChat({ theme, nativeLang, englishLevel, onBack }) {
       )}
 
       {/* Chat scroll area */}
-      <div className="flex-1 bg-slate-50 border-2 border-slate-200 rounded-3xl p-5 overflow-y-auto mb-6 flex flex-col gap-4 max-h-[360px]">
+      <div className="flex-1 bg-slate-50 border-2 border-slate-200 rounded-3xl p-3 sm:p-5 overflow-y-auto mb-6 flex flex-col gap-4 max-h-[360px]">
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`max-w-[88%] p-5 rounded-2xl ${theme.fontSizeBody} font-bold shadow-xs leading-relaxed flex flex-col gap-2 ${
+            className={`max-w-[95%] sm:max-w-[88%] p-3 sm:p-5 rounded-2xl ${theme.fontSizeBody} font-bold shadow-xs leading-relaxed flex flex-col gap-2 ${
               msg.sender === 'user'
                 ? `${theme.chatUserBg} self-end`
                 : `${theme.chatAiBg} self-start`
@@ -234,13 +234,13 @@ export default function AiChat({ theme, nativeLang, englishLevel, onBack }) {
               ? 'ഒരു ഇംഗ്ലീഷ് വാക്ക് ചോദിക്കൂ... (e.g. hospital)'
               : 'Ask any English word... (e.g. hospital)'
           }
-          className={`flex-1 ${theme.input} rounded-2xl px-5 py-4 ${theme.fontSizeBody} outline-none transition-all duration-200`}
+          className={`flex-1 ${theme.input} rounded-2xl px-3 py-3 sm:px-5 sm:py-4 ${theme.fontSizeBody} outline-none transition-all duration-200`}
           disabled={loading}
         />
         <button
           onClick={handleSendMessage}
           disabled={loading || !input.trim()}
-          className={`${theme.btnSecondary} px-6 rounded-2xl flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`${theme.btnSecondary} px-4 sm:px-6 rounded-2xl flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {loading
             ? <RefreshCw className="w-6 h-6 text-white animate-spin" />
