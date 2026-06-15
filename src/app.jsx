@@ -104,6 +104,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDataLoaded]);
 
+  // Prevent white screen if nativeLang is lost
+  useEffect(() => {
+    if (isDataLoaded && !nativeLang && screen !== 'language-select' && screen !== 'login') {
+      setScreenState('language-select');
+    }
+  }, [isDataLoaded, nativeLang, screen]);
+
   const theme = { ...UNIFIED_THEME_COLORS, ...(TEXT_SIZES[textSize] || TEXT_SIZES.medium) };
 
   useEffect(() => {
