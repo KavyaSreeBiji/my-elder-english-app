@@ -541,7 +541,7 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
           <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 bg-slate-100 px-4 py-1.5 rounded-full">
             {q.qType === 'toNative' ? t.toNative : t.toEnglish}
           </span>
-          <div className={`${theme.fontSizeCardEnglish} ${theme.textPrimary} leading-tight`}>
+          <div className={`${theme.fontSizeCardEnglish} ${theme.textPrimary} leading-tight break-words w-full px-2`}>
             {q.prompt}
           </div>
           {q.qType === 'toNative' && (
@@ -557,7 +557,7 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
         {/* Options */}
         <div className="grid grid-cols-1 gap-3">
           {q.options.map((option, i) => {
-            let cls = `w-full text-left ${theme.fontSizeBody} font-bold px-5 py-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer active:scale-[0.98]`;
+            let cls = `w-full text-left ${theme.fontSizeBody} font-bold px-4 sm:px-5 py-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer active:scale-[0.98] break-words hyphens-auto`;
             if (!answered) {
               cls += ` bg-white border-slate-200 hover:border-indigo-400 hover:bg-indigo-50`;
             } else if (option === q.answer) {
@@ -717,12 +717,12 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
       </div>
 
       {/* Main flashcard */}
-      <div className={`${theme.cardBg} rounded-3xl p-6 md:p-10 shadow-sm flex flex-col items-center justify-center text-center gap-5 min-h-[280px]`}>
+      <div className={`${theme.cardBg} rounded-3xl p-5 sm:p-6 md:p-10 shadow-sm flex flex-col items-center justify-center text-center gap-5 min-h-[280px] w-full overflow-hidden`}>
         <div className="flex flex-col gap-1 w-full">
           <span className="text-xs uppercase font-extrabold tracking-wider text-slate-400 bg-slate-100 px-4 py-1.5 rounded-full w-max mx-auto mb-1">
             Your Language
           </span>
-          <span className={`${theme.fontSizeCardMalayalam} ${theme.textPrimary} leading-relaxed px-2`}>
+          <span className={`${theme.fontSizeCardMalayalam} ${theme.textPrimary} leading-relaxed px-2 break-words w-full`}>
             {currentCard.translations[langId] || currentCard.translations.ml}
           </span>
         </div>
@@ -733,10 +733,10 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
           <span className="text-xs uppercase font-extrabold tracking-wider text-slate-400 bg-slate-100 px-4 py-1.5 rounded-full w-max mx-auto mb-3 block">
             English
           </span>
-          <h3 className={`${theme.fontSizeCardEnglish} ${theme.textPrimary} tracking-tight mb-3`}>
+          <h3 className={`${theme.fontSizeCardEnglish} ${theme.textPrimary} tracking-tight mb-3 break-words w-full px-2`}>
             {currentCard.english}
           </h3>
-          <p className="text-sm md:text-base text-slate-500 italic max-w-lg mx-auto font-medium">
+          <p className="text-sm md:text-base text-slate-500 italic max-w-lg mx-auto font-medium break-words w-full px-2">
             💡 {currentCard.context}
           </p>
         </div>
