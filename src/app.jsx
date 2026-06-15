@@ -71,6 +71,12 @@ export default function App() {
   const [textSize, setTextSize] = useState('medium');
   const [nativeLang, setNativeLang] = useState(null);
   const [screen, setScreenState] = useState('language-select');
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [totalCorrect, setTotalCorrect] = useState(0);
+  const [totalQuizzes, setTotalQuizzes] = useState(0);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isTextModalOpen, setIsTextModalOpen] = useState(false);
+  const [loginError, setLoginError] = useState(null);
 
   const setScreen = (newScreen) => {
     if (newScreen !== screen) {
@@ -97,12 +103,6 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDataLoaded]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [totalCorrect, setTotalCorrect] = useState(0);
-  const [totalQuizzes, setTotalQuizzes] = useState(0);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [isTextModalOpen, setIsTextModalOpen] = useState(false);
-  const [loginError, setLoginError] = useState(null);
 
   const theme = { ...UNIFIED_THEME_COLORS, ...(TEXT_SIZES[textSize] || TEXT_SIZES.medium) };
 
@@ -212,14 +212,7 @@ export default function App() {
           {screen === 'language-select' && (
             <LanguageSelect 
               theme={theme} 
-              onSelectLanguage={(lang) => { 
-                setNativeLang(lang); 
-                if (userId) {
-                  setScreen('home');
-                } else {
-                  setScreen('login'); 
-                }
-              }} 
+              onSelectLanguage={(lang) => { setNativeLang(lang); setScreen('login'); }} 
             />
           )}
 
