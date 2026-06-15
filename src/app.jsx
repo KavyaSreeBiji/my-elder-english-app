@@ -70,7 +70,33 @@ export default function App() {
   const [englishLevel, setEnglishLevel] = useState(null);
   const [textSize, setTextSize] = useState('medium');
   const [nativeLang, setNativeLang] = useState(null);
-  const [screen, setScreen] = useState('language-select');
+  const [screen, setScreenState] = useState('language-select');
+
+  const setScreen = (newScreen) => {
+    if (newScreen !== screen) {
+      window.history.pushState({ screen: newScreen }, '', `?screen=${newScreen}`);
+      setScreenState(newScreen);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (event.state && event.state.screen) {
+        setScreenState(event.state.screen);
+      } else {
+        setScreenState(userId ? 'home' : 'language-select');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [userId]);
+
+  useEffect(() => {
+    if (isDataLoaded) {
+      window.history.replaceState({ screen }, '', `?screen=${screen}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDataLoaded]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalQuizzes, setTotalQuizzes] = useState(0);
@@ -109,12 +135,12 @@ export default function App() {
           setEnglishLevel(data.englishLevel || null);
           setTextSize(data.textSize || 'medium');
           setNativeLang(data.nativeLang || null);
-          setScreen(data.screen || 'assessment');
+          setScreenState(data.screen || 'assessment');
           setSelectedCategory(data.selectedCategory || null);
           setTotalCorrect(data.totalCorrect || 0);
           setTotalQuizzes(data.totalQuizzes || 0);
         } else {
-          setScreen('assessment');
+          setScreenState('assessment');
         }
       } else {
         setUserId(null);
