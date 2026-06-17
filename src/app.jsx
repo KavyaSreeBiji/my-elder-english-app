@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import Header from './components/Header';
 import Assessment from './components/Assessment';
@@ -78,24 +78,57 @@ export default function App() {
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [loginError, setLoginError] = useState(null);
 
-  const setScreen = (newScreen) => {
+  const hasHistory = useRef(false);
+
+  const setScreen = (newScreen, replace = false) => {
     if (newScreen !== screen) {
-      window.history.pushState({ screen: newScreen }, '', `?screen=${newScreen}`);
+      if (replace) {
+        window.history.replaceState({ screen: newScreen }, '', `?screen=${newScreen}`);
+      } else {
+        window.history.pushState({ screen: newScreen }, '', `?screen=${newScreen}`);
+        hasHistory.current = true;
+      }
       setScreenState(newScreen);
+    }
+  };
+
+  const handleBack = (fallbackScreen = 'home') => {
+    if (hasHistory.current) {
+      window.history.back();
+    } else {
+      setScreen(fallbackScreen, true);
     }
   };
 
   useEffect(() => {
     const handlePopState = (event) => {
-      if (event.state && event.state.screen) {
-        setScreenState(event.state.screen);
+      const targetScreen = event.state?.screen;
+      if (userId) {
+        // Logged in user should not be able to navigate back to auth screens
+        if (!targetScreen || targetScreen === 'login' || targetScreen === 'language-select') {
+          const defaultScreen = englishLevel ? 'home' : 'assessment';
+          window.history.replaceState({ screen: defaultScreen }, '', `?screen=${defaultScreen}`);
+          setScreenState(defaultScreen);
+          return;
+        }
       } else {
-        setScreenState(userId ? 'home' : 'language-select');
+        // Logged out user should not be able to navigate to authenticated screens
+        if (targetScreen && targetScreen !== 'login' && targetScreen !== 'language-select') {
+          window.history.replaceState({ screen: 'language-select' }, '', '?screen=language-select');
+          setScreenState('language-select');
+          return;
+        }
+      }
+
+      if (targetScreen) {
+        setScreenState(targetScreen);
+      } else {
+        setScreenState(userId ? (englishLevel ? 'home' : 'assessment') : 'language-select');
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [userId]);
+  }, [userId, englishLevel]);
 
   useEffect(() => {
     if (isDataLoaded) {
@@ -135,20 +168,24 @@ export default function App() {
     }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        setIsDataLoaded(false); // Show loading spinner while loading progress
         setUserId(user.uid);
         setUserName(user.email);
         const data = await loadUserProgress(user.uid);
+        let targetScreen = 'assessment';
         if (data) {
           setEnglishLevel(data.englishLevel || null);
           setTextSize(data.textSize || 'medium');
           setNativeLang(data.nativeLang || null);
-          setScreenState(data.screen || 'assessment');
+          targetScreen = data.screen || 'assessment';
           setSelectedCategory(data.selectedCategory || null);
           setTotalCorrect(data.totalCorrect || 0);
           setTotalQuizzes(data.totalQuizzes || 0);
-        } else {
-          setScreenState('assessment');
         }
+        
+        // Use replaceState to replace 'login' or initial load with the target screen
+        window.history.replaceState({ screen: targetScreen }, '', `?screen=${targetScreen}`);
+        setScreenState(targetScreen);
       } else {
         setUserId(null);
         setUserName(null);
@@ -175,7 +212,7 @@ export default function App() {
 
   const handleReset = () => {
     setNativeLang(null);
-    setScreen('language-select');
+    setScreen('language-select', true); // Replace history to keep clean
     setSelectedCategory(null);
   };
 
@@ -188,8 +225,26 @@ export default function App() {
     setSelectedCategory(null);
     setTotalCorrect(0);
     setTotalQuizzes(0);
-    setScreen('language-select');
+    setScreen('language-select', true); // Replace history to avoid going back to logged-in screens
+    hasHistory.current = false; // Reset session history tracking
   };
+
+  if (!isDataLoaded) {
+    return (
+      <div className="bg-gradient-to-br from-slate-50 via-teal-50/15 to-indigo-50/15 min-h-screen text-slate-900 font-sans flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-6 p-8 bg-white/85 backdrop-blur-md border border-emerald-600/10 rounded-3xl shadow-xl max-w-sm w-full text-center">
+          <div className="relative w-16 h-16">
+            <div className="absolute inset-0 rounded-full border-4 border-emerald-100"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-emerald-600 border-t-transparent animate-spin"></div>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">English Companion</h2>
+            <p className="text-sm text-slate-500 mt-1">അല്പം കാത്തിരിക്കൂ... (Loading...)</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={theme.bg}>
@@ -224,14 +279,20 @@ export default function App() {
           )}
 
           {screen === 'login' && (
-            <Login theme={theme} nativeLang={nativeLang} onAuth={handleAuth} loginError={loginError} />
+            <Login 
+              theme={theme} 
+              nativeLang={nativeLang} 
+              onAuth={handleAuth} 
+              loginError={loginError} 
+              onBack={() => handleBack('language-select')} 
+            />
           )}
 
           {screen === 'assessment' && (
             <Assessment 
               theme={theme}
               nativeLang={nativeLang}
-              onSelectLevel={(level) => { setEnglishLevel(level); setScreen('home'); }} 
+              onSelectLevel={(level) => { setEnglishLevel(level); setScreen('home', true); }} 
             />
           )}
 
@@ -250,7 +311,7 @@ export default function App() {
               nativeLang={nativeLang}
               englishLevel={englishLevel}
               categoryId={selectedCategory} 
-              onBack={() => setScreen('home')} 
+              onBack={() => handleBack('home')} 
               onQuizComplete={(score) => {
                 setTotalCorrect(prev => prev + score);
                 setTotalQuizzes(prev => prev + 1);
@@ -263,7 +324,7 @@ export default function App() {
               theme={theme}
               nativeLang={nativeLang}
               englishLevel={englishLevel}
-              onBack={() => setScreen('home')} 
+              onBack={() => handleBack('home')} 
             />
           )}
         </main>
