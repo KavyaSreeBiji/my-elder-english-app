@@ -44,18 +44,30 @@ export const saveUserProgress = async (userId, data) => {
 };
 
 /**
- * Loads user progress from Firestore
+ * Loads user progress from Firestore with a 3.5 second timeout
  */
 export const loadUserProgress = async (userId) => {
   if (!db || !userId) return null;
-  try {
-    const userRef = doc(db, 'users', userId);
-    const docSnap = await getDoc(userRef);
-    if (docSnap.exists()) {
-      return docSnap.data();
+
+  const timeoutPromise = new Promise((resolve) => 
+    setTimeout(() => {
+      console.warn("loadUserProgress timed out");
+      resolve(null);
+    }, 3500)
+  );
+
+  const fetchPromise = (async () => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      const docSnap = await getDoc(userRef);
+      if (docSnap.exists()) {
+        return docSnap.data();
+      }
+    } catch (error) {
+      console.error("Error loading progress:", error);
     }
-  } catch (error) {
-    console.error("Error loading progress:", error);
-  }
-  return null;
+    return null;
+  })();
+
+  return Promise.race([fetchPromise, timeoutPromise]);
 };

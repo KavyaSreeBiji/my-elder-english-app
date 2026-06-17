@@ -167,30 +167,35 @@ export default function App() {
       return;
     }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setIsDataLoaded(false); // Show loading spinner while loading progress
-        setUserId(user.uid);
-        setUserName(user.email);
-        const data = await loadUserProgress(user.uid);
-        let targetScreen = 'assessment';
-        if (data) {
-          setEnglishLevel(data.englishLevel || null);
-          setTextSize(data.textSize || 'medium');
-          setNativeLang(data.nativeLang || null);
-          targetScreen = data.screen || 'assessment';
-          setSelectedCategory(data.selectedCategory || null);
-          setTotalCorrect(data.totalCorrect || 0);
-          setTotalQuizzes(data.totalQuizzes || 0);
+      try {
+        if (user) {
+          setIsDataLoaded(false); // Show loading spinner while loading progress
+          setUserId(user.uid);
+          setUserName(user.email);
+          const data = await loadUserProgress(user.uid);
+          let targetScreen = 'assessment';
+          if (data) {
+            setEnglishLevel(data.englishLevel || null);
+            setTextSize(data.textSize || 'medium');
+            setNativeLang(data.nativeLang || null);
+            targetScreen = data.screen || 'assessment';
+            setSelectedCategory(data.selectedCategory || null);
+            setTotalCorrect(data.totalCorrect || 0);
+            setTotalQuizzes(data.totalQuizzes || 0);
+          }
+          
+          // Use replaceState to replace 'login' or initial load with the target screen
+          window.history.replaceState({ screen: targetScreen }, '', `?screen=${targetScreen}`);
+          setScreenState(targetScreen);
+        } else {
+          setUserId(null);
+          setUserName(null);
         }
-        
-        // Use replaceState to replace 'login' or initial load with the target screen
-        window.history.replaceState({ screen: targetScreen }, '', `?screen=${targetScreen}`);
-        setScreenState(targetScreen);
-      } else {
-        setUserId(null);
-        setUserName(null);
+      } catch (error) {
+        console.error("Error in onAuthStateChanged:", error);
+      } finally {
+        setIsDataLoaded(true);
       }
-      setIsDataLoaded(true);
     });
     return () => unsubscribe();
   }, []);
