@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, UserPlus } from 'lucide-react';
+import { LogIn, UserPlus, ArrowLeft } from 'lucide-react';
 
 const TRANSLATIONS = {
   ml: {
@@ -19,7 +19,8 @@ const TRANSLATIONS = {
     errorUserNotFound: 'അക്കൗണ്ട് കണ്ടെത്താനായില്ല',
     errorWrongPassword: 'തെറ്റായ പാസ്‌വേഡ് അഥവാ അക്കൗണ്ട് ഇല്ല',
     errorEmailInUse: 'ഈ ഇമെയിൽ നിലവിലുണ്ട്',
-    errorGeneral: 'ഒരു പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.'
+    errorGeneral: 'ഒരു പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.',
+    back: 'മടങ്ങുക'
   },
   hi: {
     titleLogin: 'लॉग इन करें',
@@ -38,7 +39,8 @@ const TRANSLATIONS = {
     errorUserNotFound: 'खाता नहीं मिला',
     errorWrongPassword: 'गलत पासवर्ड या खाता नहीं मिला',
     errorEmailInUse: 'यह ईमेल पहले से उपयोग में है',
-    errorGeneral: 'एक त्रुटि हुई। कृपया पुन: प्रयास करें।'
+    errorGeneral: 'एक त्रुटि हुई। कृपया पुन: प्रयास करें।',
+    back: 'वापस जाएँ'
   },
   ta: {
     titleLogin: 'உள்நுழையவும்',
@@ -57,7 +59,8 @@ const TRANSLATIONS = {
     errorUserNotFound: 'கணக்கு கிடைக்கவில்லை',
     errorWrongPassword: 'தவறான கடவுச்சொல் அல்லது கணக்கு இல்லை',
     errorEmailInUse: 'இந்த மின்னஞ்சல் பயன்பாட்டில் உள்ளது',
-    errorGeneral: 'ஒரு பிழை ஏற்பட்டுள்ளது. மீண்டும் முயற்சிக்கவும்.'
+    errorGeneral: 'ஒரு பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.',
+    back: 'பின்செல்'
   },
   es: {
     titleLogin: 'Iniciar Sesión',
@@ -76,7 +79,8 @@ const TRANSLATIONS = {
     errorUserNotFound: 'Cuenta no encontrada',
     errorWrongPassword: 'Contraseña incorrecta o cuenta no encontrada',
     errorEmailInUse: 'Este correo ya está en uso',
-    errorGeneral: 'Ocurrió un error. Inténtelo de nuevo.'
+    errorGeneral: 'Ocurrió un error. Inténtelo de nuevo.',
+    back: 'Volver'
   },
   en: {
     titleLogin: 'Log In',
@@ -95,11 +99,12 @@ const TRANSLATIONS = {
     errorUserNotFound: 'Account not found',
     errorWrongPassword: 'Incorrect password or account not found',
     errorEmailInUse: 'Email is already in use',
-    errorGeneral: 'An error occurred. Please try again.'
+    errorGeneral: 'An error occurred. Please try again.',
+    back: 'Back'
   }
 };
 
-export default function Login({ onAuth, theme, nativeLang, loginError }) {
+export default function Login({ onAuth, theme, nativeLang, loginError, onBack }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -130,29 +135,42 @@ export default function Login({ onAuth, theme, nativeLang, loginError }) {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-6 md:p-8 w-full max-w-4xl mx-auto">
-      <div className={`p-6 sm:p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] ${theme.cardBg} max-w-lg w-full shadow-xl transition-all duration-300`}>
-        <div className={`mx-auto w-24 h-24 md:w-28 md:h-28 rounded-full ${theme.accentBg} flex items-center justify-center mb-8 md:mb-10 shadow-inner`}>
+      <div className={`relative p-5 sm:p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] ${theme.cardBg} max-w-lg w-full shadow-xl transition-all duration-300`}>
+        {/* Back Button */}
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-1.5 text-slate-500 hover:text-emerald-700 font-bold text-sm sm:text-base transition-colors duration-200 cursor-pointer active:scale-95"
+            disabled={isLoading}
+          >
+            <ArrowLeft className="w-4 h-4 sm:w-5 h-5" />
+            <span>{t.back}</span>
+          </button>
+        )}
+
+        <div className={`mx-auto w-16 h-16 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full ${theme.accentBg} flex items-center justify-center mb-4 sm:mb-8 md:mb-10 shadow-inner mt-6 sm:mt-0`}>
           {isSignUp ? (
-            <UserPlus className={`w-12 h-12 md:w-14 md:h-14 ${theme.accentText}`} />
+            <UserPlus className={`w-8 h-8 sm:w-12 sm:h-12 md:w-14 md:h-14 ${theme.accentText}`} />
           ) : (
-            <LogIn className={`w-12 h-12 md:w-14 md:h-14 ${theme.accentText}`} />
+            <LogIn className={`w-8 h-8 sm:w-12 sm:h-12 md:w-14 md:h-14 ${theme.accentText}`} />
           )}
         </div>
         
-        <h2 className={`${theme.fontSizeTitle} mb-4 md:mb-6 text-center ${theme.textPrimary}`}>
+        <h2 className={`${theme.fontSizeTitle} mb-2 sm:mb-4 md:mb-6 text-center ${theme.textPrimary}`}>
           {isSignUp ? t.titleSignup : t.titleLogin}
         </h2>
-        <p className={`${theme.fontSizeBody} mb-8 md:mb-10 text-center ${theme.textSecondary} max-w-sm mx-auto leading-relaxed`}>
+        <p className={`${theme.fontSizeBody} mb-4 sm:mb-8 md:mb-10 text-center ${theme.textSecondary} max-w-sm mx-auto leading-relaxed`}>
           {isSignUp ? t.subtitleSignup : t.subtitleLogin}
         </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 md:gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:gap-4 md:gap-5">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t.placeholderEmail}
-            className={`w-full p-4 md:p-5 rounded-2xl md:rounded-3xl ${theme.input} ${theme.fontSizeBody} shadow-sm focus:shadow-md transition-all outline-none`}
+            className={`w-full p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl md:rounded-3xl ${theme.input} ${theme.fontSizeBody} shadow-sm focus:shadow-md transition-all outline-none`}
             required
             disabled={isLoading}
           />
@@ -161,7 +179,7 @@ export default function Login({ onAuth, theme, nativeLang, loginError }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={t.placeholderPassword}
-            className={`w-full p-4 md:p-5 rounded-2xl md:rounded-3xl ${theme.input} ${theme.fontSizeBody} shadow-sm focus:shadow-md transition-all outline-none`}
+            className={`w-full p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl md:rounded-3xl ${theme.input} ${theme.fontSizeBody} shadow-sm focus:shadow-md transition-all outline-none`}
             required
             disabled={isLoading}
           />
