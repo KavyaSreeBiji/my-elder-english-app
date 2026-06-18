@@ -177,8 +177,13 @@ export default function App() {
           if (data) {
             setEnglishLevel(data.englishLevel || null);
             setTextSize(data.textSize || 'medium');
-            setNativeLang(data.nativeLang || null);
+            setNativeLang(prev => data.nativeLang || prev || null);
+            
             targetScreen = data.screen || 'assessment';
+            if (targetScreen === 'login' || targetScreen === 'language-select') {
+              targetScreen = data.englishLevel ? 'home' : 'assessment';
+            }
+            
             setSelectedCategory(data.selectedCategory || null);
             setTotalCorrect(data.totalCorrect || 0);
             setTotalQuizzes(data.totalQuizzes || 0);
@@ -279,7 +284,14 @@ export default function App() {
           {screen === 'language-select' && (
             <LanguageSelect 
               theme={theme} 
-              onSelectLanguage={(lang) => { setNativeLang(lang); setScreen('login'); }} 
+              onSelectLanguage={(lang) => { 
+                setNativeLang(lang); 
+                if (userId) {
+                  setScreen(englishLevel ? 'home' : 'assessment');
+                } else {
+                  setScreen('login'); 
+                }
+              }} 
             />
           )}
 
