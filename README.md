@@ -2,15 +2,15 @@
 
 A web application designed to provide an accessible and engaging platform for elder users to learn English. The app features interactive lessons such as flashcards and a user-friendly interface.
 
-## 🚀 Live Demo
+##  Live Demo
 Check out the live application here: **[https://my-elder-english-app.onrender.com/](https://my-elder-english-app.onrender.com/)**
 
-## 🛠️ Technologies Used
+##  Technologies Used
 - **Frontend**: React, Vite, Tailwind CSS, Lucide React icons
 - **Backend**: Node.js, Express
 - **Database & Authentication**: Firebase
 
-## 🏃‍♂️ Running Locally
+##  Running Locally
 
 1. **Install dependencies:**
    ```bash
@@ -40,7 +40,7 @@ Check out the live application here: **[https://my-elder-english-app.onrender.co
    npm run start
    ```
 
-## ✨ Features
+##  Features
 - **User Authentication**: Secure login system.
 - **Flashcard Decks**: Interactive flashcards to practice and learn English vocabulary.
 - **Responsive Design**: Tailored for ease of use across multiple devices, with a focus on accessibility.
