@@ -74,6 +74,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalQuizzes, setTotalQuizzes] = useState(0);
+  const [categoryProgress, setCategoryProgress] = useState({});
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [loginError, setLoginError] = useState(null);
@@ -156,10 +157,11 @@ export default function App() {
         screen,
         selectedCategory,
         totalCorrect,
-        totalQuizzes
+        totalQuizzes,
+        categoryProgress
       });
     }
-  }, [userId, userName, englishLevel, textSize, nativeLang, screen, selectedCategory, totalCorrect, totalQuizzes, isDataLoaded]);
+  }, [userId, userName, englishLevel, textSize, nativeLang, screen, selectedCategory, totalCorrect, totalQuizzes, categoryProgress, isDataLoaded]);
 
   useEffect(() => {
     if (!auth) {
@@ -187,6 +189,7 @@ export default function App() {
             setSelectedCategory(data.selectedCategory || null);
             setTotalCorrect(data.totalCorrect || 0);
             setTotalQuizzes(data.totalQuizzes || 0);
+            setCategoryProgress(data.categoryProgress || {});
           }
           
           // Use replaceState to replace 'login' or initial load with the target screen
@@ -328,6 +331,8 @@ export default function App() {
               nativeLang={nativeLang}
               englishLevel={englishLevel}
               categoryId={selectedCategory} 
+              categoryProgress={categoryProgress}
+              setCategoryProgress={setCategoryProgress}
               onBack={() => handleBack('home')} 
               onQuizComplete={(score) => {
                 setTotalCorrect(prev => prev + score);

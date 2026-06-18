@@ -198,7 +198,7 @@ const L = {
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function FlashcardDeck({ theme, nativeLang, englishLevel, categoryId, onBack, onQuizComplete }) {
+export default function FlashcardDeck({ theme, nativeLang, englishLevel, categoryId, categoryProgress, setCategoryProgress, onBack, onQuizComplete }) {
   const staticCards = useMemo(() => LESSON_DATA[categoryId] || [], [categoryId]);
   const langId = nativeLang?.id || 'ml';
   const t = L[langId] || L.ml;
@@ -213,6 +213,7 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
   const [isLoadingCards, setIsLoadingCards] = useState(true);
   const [aiError, setAiError] = useState(false);
   const [deckPointer, setDeckPointer] = useState(0);
+  const [fetchTrigger, setFetchTrigger] = useState(0);
 
   useEffect(() => {
     if (!quizSize) return;
@@ -222,6 +223,17 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
       if (isMounted) {
         setIsLoadingCards(true);
         setAiError(false);
+      }
+
+      const prog = categoryProgress?.[categoryId];
+      if (prog && prog.cards && prog.cards.length > 0 && (prog.testCount || 0) < 2) {
+        if (isMounted) {
+          setAllCards(prog.cards);
+          setDeck(shuffle([...prog.cards]));
+          setDeckPointer(0);
+          setIsLoadingCards(false);
+        }
+        return;
       }
 
       try {
@@ -238,6 +250,13 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
           if (content && content.cards && content.cards.length > 0) {
             setAllCards(content.cards);
             setDeck(shuffle([...content.cards]));
+            setDeckPointer(0);
+            if (setCategoryProgress) {
+              setCategoryProgress(prev => ({
+                ...prev,
+                [categoryId]: { cards: content.cards, testCount: 0 }
+              }));
+            }
           } else {
             throw new Error("Invalid format");
           }
@@ -248,6 +267,7 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
           setAiError(true);
           setAllCards(staticCards);
           setDeck(shuffle([...staticCards]));
+          setDeckPointer(0);
         }
       } finally {
         if (isMounted) {
@@ -258,7 +278,8 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
 
     fetchCards();
     return () => { isMounted = false; };
-  }, [categoryId, englishLevel, nativeLang, staticCards, quizSize]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, englishLevel, nativeLang, staticCards, quizSize, fetchTrigger]);
   const [batchCards, setBatchCards] = useState([]); // accumulates up to quizSize
   const [totalShown, setTotalShown] = useState(0);
 
@@ -437,6 +458,15 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
       if (onQuizComplete) {
         onQuizComplete(quizScore);
       }
+      if (setCategoryProgress) {
+        setCategoryProgress(prev => ({
+          ...prev,
+          [categoryId]: {
+            ...prev?.[categoryId],
+            testCount: (prev?.[categoryId]?.testCount || 0) + 1
+          }
+        }));
+      }
     } else {
       setCurrentQ((q) => q + 1);
       setSelectedAnswer(null);
@@ -445,6 +475,14 @@ export default function FlashcardDeck({ theme, nativeLang, englishLevel, categor
   };
 
   const handleContinueAfterQuiz = () => {
+    // If testCount reached 2, fetch new cards instead of continuing old ones
+    if (categoryProgress?.[categoryId]?.testCount >= 1) { // It's incremented to 1 on the first completion, so if it's >=1 before the second? Wait, it's incremented to 1, then second time it becomes 2. 
+      // Wait, in handleContinueAfterQuiz, the state categoryProgress might already have testCount = 2 if it just completed the 2nd time!
+      // Actually, if it's >= 2, we fetch new ones.
+      if (categoryProgress?.[categoryId]?.testCount >= 2) {
+        setFetchTrigger(t => t + 1);
+      }
+    }
     setMode('card');
     setFeedback(null);
     setTranscript('');

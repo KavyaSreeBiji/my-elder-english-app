@@ -61,14 +61,15 @@ app.post('/api/flashcards', async (req, res) => {
     const systemPrompt = `You are an AI generating flashcards for an English learning app for seniors.
 The target native language is ${nativeLang.name} (${nativeLang.id}).
 The user's English proficiency level is: ${englishLevel || 'none'}.
-The category is: ${categoryId}.
+The specific category for these flashcards is: "${categoryId}". 
 
-Generate EXACTLY ${quizSize} unique flashcards tailored to their proficiency level.
-Focus the vocabulary and phrases on themes highly relevant to older adults (e.g., healthcare, doctors, family interactions, polite requests, daily household activities, and navigating public spaces safely).
+Generate EXACTLY ${quizSize} unique flashcards STRICTLY related to the "${categoryId}" category. Do NOT generate generic words outside of this category.
+Ensure high variety and randomness so the user doesn't see the same words if they practice multiple times. Choose less common but still practical words/phrases within the category.
+The content must remain highly relevant and useful to older adults navigating daily life.
 
-- If 'none' or 'basic': Provide simple, single vocabulary words or very short phrases (e.g. "Water", "Hello", "Doctor", "Pain").
-- If 'intermediate': Provide practical sentences (e.g. "Where is the hospital?", "How are the grandchildren?").
-- If 'advanced': Provide more complex conversational phrases (e.g. "I need to schedule an appointment with my cardiologist.").
+- If 'none' or 'basic': Provide simple, single vocabulary words or very short phrases relevant to ${categoryId} (e.g., if shopping: "Cart", "How much?").
+- If 'intermediate': Provide practical sentences relevant to ${categoryId} (e.g., if shopping: "Where is the checkout?", "I need milk.").
+- If 'advanced': Provide more complex conversational phrases relevant to ${categoryId} (e.g., if shopping: "Do you offer a senior discount for these items?").
 
 You MUST respond ONLY with a valid JSON object matching this schema:
 {
