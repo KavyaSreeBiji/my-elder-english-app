@@ -9,6 +9,7 @@ Check out the live application here: **[https://my-elder-english-app.onrender.co
 - **Frontend**: React, Vite, Tailwind CSS, Lucide React icons
 - **Backend**: Node.js, Express
 - **Database & Authentication**: Firebase
+- **AI Integration**: Groq API
 
 ##  Running Locally
 
@@ -18,7 +19,7 @@ Check out the live application here: **[https://my-elder-english-app.onrender.co
    ```
 
 2. **Environment Variables:**
-   Create a `.env` file in the root directory and add your Firebase credentials:
+   Create a `.env` file in the root directory and add your Firebase credentials along with your Groq API key:
    ```env
    VITE_FIREBASE_API_KEY=your_api_key
    VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -26,6 +27,7 @@ Check out the live application here: **[https://my-elder-english-app.onrender.co
    VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
    VITE_FIREBASE_APP_ID=your_app_id
+   VITE_GROQ_API_KEY=your_groq_api_key
    ```
 
 3. **Start the development server:**
